@@ -3,6 +3,13 @@ const QRCode = require('qrcode');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
+
+let BUILD_NUMBER = '00';
+try {
+  const count = parseInt(execSync('git rev-list --count HEAD 2>/dev/null').toString().trim(), 10);
+  BUILD_NUMBER = String(count).padStart(2, '0');
+} catch (e) {}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -78,6 +85,10 @@ app.post('/api/scan', (req, res) => {
   connections.get(scanner).add(target);
   console.log(`* scan: ${names.get(scanner)} <-> ${names.get(target)}`);
   res.json({ ok: true, target: { id: target, name: names.get(target) } });
+});
+
+app.get('/api/version', (req, res) => {
+  res.json({ build: BUILD_NUMBER });
 });
 
 app.get('/api/qr', async (req, res) => {

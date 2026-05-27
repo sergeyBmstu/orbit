@@ -6,6 +6,16 @@
   <title>Scan</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    #build-version {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      color: rgba(255,255,255,0.2);
+      font-size: 11px;
+      font-family: monospace;
+      z-index: 100;
+      user-select: none;
+    }
     body {
       background: #0a0a2e;
       color: #fff;
@@ -35,10 +45,15 @@
   </style>
 </head>
 <body>
+  <div id="build-version">v00</div>
   <div class="container" id="state">
     <h1>Scanning…</h1>
   </div>
   <script>
+    fetch('/api/version').then(r => r.json()).then(d => {
+      document.getElementById('build-version').textContent = `v${d.build}`;
+    }).catch(() => {});
+
     const params = new URLSearchParams(location.search);
     const target = params.get('target');
     const state = document.getElementById('state');
