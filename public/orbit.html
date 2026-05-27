@@ -247,17 +247,35 @@
       return hits.length ? hits[0].object.userData.userId : null;
     }
 
+    let hovering = false;
     canvas.addEventListener('pointermove', e => {
-      canvas.classList.toggle('hover', !!pick(e));
+      hovering = !!pick(e);
+      canvas.classList.toggle('hover', hovering);
+    });
+    canvas.addEventListener('pointerleave', () => {
+      hovering = false;
+      canvas.classList.remove('hover');
     });
     canvas.addEventListener('click', e => {
       const id = pick(e);
       if (id) location.href = `/orbit.html?id=${id}`;
     });
 
+    let sceneTime = Date.now() * 0.001;
+    let lastFrame = performance.now();
+    let timeScale = 1;
+
     function animate() {
       requestAnimationFrame(animate);
-      const t = Date.now() * 0.001;
+      const now = performance.now();
+      const dt = (now - lastFrame) / 1000;
+      lastFrame = now;
+
+      const targetScale = hovering ? 0.05 : 1;
+      timeScale += (targetScale - timeScale) * Math.min(1, dt * 8);
+      sceneTime += dt * timeScale;
+      const t = sceneTime;
+
       planet.rotation.y = t * 0.08;
       for (const u of planetObjects) {
         const angle = u.startAngle + t * u.speed;
