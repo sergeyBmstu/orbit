@@ -19,6 +19,8 @@ try {
   } catch (e2) {}
 }
 
+const STARTED_AT = new Date();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -96,7 +98,7 @@ app.post('/api/scan', (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-  res.json({ build: BUILD_NUMBER });
+  res.json({ build: BUILD_NUMBER, startedAt: STARTED_AT.toISOString() });
 });
 
 app.get('/api/galaxy', (req, res) => {
@@ -132,7 +134,8 @@ app.get('/api/qr/:id', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\nServer:  ${baseURL}`);
+  console.log(`\nBuild:   v${BUILD_NUMBER}`);
+  console.log(`Server:  ${baseURL}`);
   console.log(`Join:    ${baseURL}/join.html`);
   console.log(`Orbit:   ${baseURL}/orbit.html\n`);
 });
