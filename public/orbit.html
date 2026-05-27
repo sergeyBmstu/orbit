@@ -82,6 +82,21 @@
     }
     #back:hover { background: rgba(255,255,255,0.15); }
     #title.with-back { left: 160px; }
+    #view-galaxy {
+      position: fixed;
+      top: 72px;
+      right: 40px;
+      z-index: 11;
+      padding: 10px 16px;
+      background: rgba(140, 200, 255, 0.12);
+      border: 1px solid rgba(140, 200, 255, 0.35);
+      border-radius: 10px;
+      color: #cde6ff;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    #view-galaxy:hover { background: rgba(140, 200, 255, 0.22); }
     canvas { cursor: default; }
     canvas.hover { cursor: pointer; }
 
@@ -90,6 +105,7 @@
       #title small { font-size: 11px; margin-top: 2px; }
       #title.with-back { left: 110px; font-size: 16px; }
       #user-count { top: max(env(safe-area-inset-top), 14px); right: 16px; font-size: 16px; }
+      #view-galaxy { top: calc(max(env(safe-area-inset-top), 14px) + 30px); right: 16px; padding: 7px 12px; font-size: 11px; }
       #back { top: max(env(safe-area-inset-top), 14px); left: 14px; padding: 8px 12px; font-size: 12px; }
       #qr-container { bottom: max(env(safe-area-inset-bottom), 14px); }
       #qr-img { width: 120px; height: 120px; padding: 6px; border-radius: 10px; }
@@ -101,6 +117,7 @@
 <body>
   <div id="build-version">v00</div>
   <a id="back" href="/orbit.html">&larr; My orbit</a>
+  <a id="view-galaxy" href="/galaxy.html">View galaxy &rarr;</a>
   <div id="title">Loading…</div>
   <div id="user-count">0 planets</div>
   <div id="qr-container">
