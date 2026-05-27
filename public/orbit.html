@@ -104,29 +104,6 @@
     #title.with-back { left: 160px; }
     canvas { cursor: default; }
     canvas.hover { cursor: pointer; }
-    #join-toast {
-      position: fixed;
-      top: 80px;
-      left: 50%;
-      transform: translateX(-50%) translateY(-20px);
-      background: rgba(126,42,56,0.9);
-      color: var(--orbit-cream);
-      padding: 12px 24px;
-      border-radius: 9999px;
-      font-family: var(--font-ui);
-      font-size: 15px;
-      font-weight: 500;
-      opacity: 0;
-      transition: opacity 0.4s ease, transform 0.4s ease;
-      z-index: 20;
-      pointer-events: none;
-      box-shadow: 0 0 32px rgba(126,42,56,0.5), 0 8px 24px rgba(0,0,0,0.4);
-      white-space: nowrap;
-    }
-    #join-toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
   </style>
 </head>
 <body>
@@ -134,7 +111,6 @@
   <a id="back" href="/orbit.html">&larr; My orbit</a>
   <div id="title">Loading…</div>
   <div id="user-count">0 planets</div>
-  <div id="join-toast"></div>
   <div id="qr-container">
     <img id="qr-img" />
     <div id="qr-url"></div>
@@ -208,21 +184,6 @@
     const planetObjects = [];
     const knownIds = new Set();
     const colors = ['#F4ECE4', '#C78A93', '#8C95A3', '#A8525F', '#C7CCD4', '#D4A0A8', '#7E2A38', '#F8EFE6'];
-    const entranceAnims = [];
-
-    function easeOutElastic(t) {
-      if (t === 0 || t === 1) return t;
-      return Math.pow(2, -10 * t) * Math.sin((t - 0.075) * (2 * Math.PI) / 0.3) + 1;
-    }
-    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-
-    function showJoinToast(name) {
-      var el = document.getElementById('join-toast');
-      el.textContent = '✦ ' + name + ' entered the orbit';
-      el.classList.add('show');
-      clearTimeout(showJoinToast._t);
-      showJoinToast._t = setTimeout(function() { el.classList.remove('show'); }, 3000);
-    }
 
     function hashIndex(id) {
       let h = 0;
@@ -265,28 +226,9 @@
       );
       dot.userData.userId = p.id;
       sprite.userData.userId = p.id;
-      dot.scale.set(0, 0, 0);
-      sprite.scale.set(0, 0, 0);
-
-      const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(0.4, 16, 16),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.7 })
-      );
-      scene.add(glow);
-
-      const wave = new THREE.Mesh(
-        new THREE.RingGeometry(0.8, 1.0, 64),
-        new THREE.MeshBasicMaterial({ color: 0xA8525F, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
-      );
-      wave.rotation.x = Math.PI / 2;
-      scene.add(wave);
-
-      entranceAnims.push({ dot, sprite, glow, wave, startTime: performance.now() });
       scene.add(dot);
       scene.add(sprite);
       planetObjects.push({ sprite, dot, orbitRadius, speed, startAngle, tiltAmount });
-      showJoinToast(p.name);
-      planet.userData.pulseStart = performance.now();
     }
 
     async function poll() {
@@ -384,46 +326,6 @@
       camera.position.z = Math.cos(t * 0.04) * 14;
       camera.position.y = 3 + Math.sin(t * 0.06) * 1.5;
       camera.lookAt(0, 0, 0);
-
-      for (let i = entranceAnims.length - 1; i >= 0; i--) {
-        const a = entranceAnims[i];
-        const elapsed = now - a.startTime;
-        const scaleT = Math.min(elapsed / 1000, 1);
-        const eased = easeOutElastic(scaleT);
-        a.dot.scale.setScalar(eased);
-        a.sprite.scale.set(eased * 4, eased, eased);
-
-        a.glow.position.copy(a.dot.position);
-        const glowT = Math.min(elapsed / 800, 1);
-        const gs = 1 + glowT * 3;
-        a.glow.scale.set(gs, gs, gs);
-        a.glow.material.opacity = 0.7 * (1 - glowT);
-
-        const waveT = Math.min(elapsed / 1500, 1);
-        const ws = 1 + easeOutCubic(waveT) * 6;
-        a.wave.scale.set(ws, ws, ws);
-        a.wave.material.opacity = 0.7 * (1 - waveT);
-
-        if (scaleT >= 1 && waveT >= 1) {
-          scene.remove(a.glow);
-          scene.remove(a.wave);
-          a.glow.geometry.dispose(); a.glow.material.dispose();
-          a.wave.geometry.dispose(); a.wave.material.dispose();
-          entranceAnims.splice(i, 1);
-        }
-      }
-
-      if (planet.userData.pulseStart) {
-        const pt = (now - planet.userData.pulseStart) / 600;
-        if (pt < 1) {
-          const bump = 1 + 0.15 * Math.sin(pt * Math.PI);
-          planet.scale.set(bump, bump, bump);
-        } else {
-          planet.scale.set(1, 1, 1);
-          planet.userData.pulseStart = null;
-        }
-      }
-
       renderer.render(scene, camera);
     }
     animate();
