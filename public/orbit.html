@@ -171,6 +171,7 @@
       back.style.display = 'inline-block';
       back.href = myId ? '/orbit.html' : '/join.html';
       document.getElementById('title').classList.add('with-back');
+      document.getElementById('qr-container').style.display = 'none';
     }
 
     const scene = new THREE.Scene();
@@ -191,10 +192,57 @@
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.3 })));
 
-    // Planet (the current user)
+    // Same texture pool as the galaxy view so a planet looks the same everywhere.
+    const ARCHETYPES = [
+      { name: 'gasWarm', tex: ['/textures/jupiter.jpg'] },
+      { name: 'gasCold', tex: ['/textures/saturn.jpg'] },
+      { name: 'ice',     tex: ['/textures/uranus.jpg', '/textures/neptune.jpg'] },
+      { name: 'rocky',   tex: ['/textures/mercury.jpg', '/textures/mars.jpg', '/textures/moon.jpg'] },
+      { name: 'lava',    tex: ['/textures/venus_surface.jpg'] },
+      { name: 'ocean',   tex: ['/textures/earth_daymap.jpg'] },
+    ];
+    const textureLoader = new THREE.TextureLoader();
+    const _texCache = new Map();
+    function loadTex(url) {
+      let t = _texCache.get(url);
+      if (t) return t;
+      t = textureLoader.load(url);
+      t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = 8;
+      _texCache.set(url, t);
+      return t;
+    }
+    function hashIndex(id) {
+      const s = String(id);
+      let h = 0x9e3779b9;
+      for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x85ebca6b) | 0;
+      return Math.abs(h);
+    }
+    function mulberry32(seed) {
+      return function () {
+        let t = (seed += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    function planetTextureFor(id) {
+      const rng = mulberry32(hashIndex(id));
+      const arch = ARCHETYPES[Math.floor(rng() * ARCHETYPES.length)];
+      const url = arch.tex[Math.floor(rng() * arch.tex.length)];
+      const ocean = arch.name === 'ocean' || arch.name === 'ice';
+      return { url, roughness: ocean ? 0.55 : 0.85 };
+    }
+
+    // Planet (the user whose orbit we're viewing) — textured to match the galaxy
+    const centralParams = planetTextureFor(viewId);
     const planet = new THREE.Mesh(
       new THREE.SphereGeometry(2.2, 64, 64),
-      new THREE.MeshStandardMaterial({ color: 0x7E2A38, emissive: 0x3F141C, roughness: 0.6, metalness: 0.3 })
+      new THREE.MeshStandardMaterial({
+        map: loadTex(centralParams.url),
+        roughness: centralParams.roughness,
+        metalness: 0,
+      })
     );
     scene.add(planet);
 
@@ -212,20 +260,32 @@
       scene.add(ring);
     }
 
-    scene.add(new THREE.AmbientLight(0x302028));
-    const light = new THREE.PointLight(0xffffff, 1.5);
+    scene.add(new THREE.AmbientLight(0x8090a8, 0.6));
+    const light = new THREE.PointLight(0xffe7c0, 2.0);
     light.position.set(10, 10, 10);
     scene.add(light);
+    const fillLight = new THREE.PointLight(0x8090ff, 0.7);
+    fillLight.position.set(-10, -4, -10);
+    scene.add(fillLight);
+
+    // Hover halo
+    const hoverHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x8ce6ff,
+        transparent: true,
+        opacity: 0,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    hoverHalo.visible = false;
+    scene.add(hoverHalo);
 
     const planetObjects = [];
     const knownIds = new Set();
     const colors = ['#F4ECE4', '#C78A93', '#8C95A3', '#A8525F', '#C7CCD4', '#D4A0A8', '#7E2A38', '#F8EFE6'];
-
-    function hashIndex(id) {
-      let h = 0;
-      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-      return Math.abs(h);
-    }
 
     function createTextSprite(text, color) {
       const canvas = document.createElement('canvas');
@@ -256,15 +316,21 @@
       const startAngle = ((seed >> 13) % 1000) / 1000 * Math.PI * 2;
       const tiltAmount = (((seed >> 17) % 1000) / 1000 - 0.5) * 1.2;
 
+      const tex = planetTextureFor(p.id);
+      const radius = 0.35;
       const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.18, 16, 16),
-        new THREE.MeshBasicMaterial({ color: new THREE.Color(color) })
+        new THREE.SphereGeometry(radius, 32, 32),
+        new THREE.MeshStandardMaterial({
+          map: loadTex(tex.url),
+          roughness: tex.roughness,
+          metalness: 0,
+        })
       );
       dot.userData.userId = p.id;
       sprite.userData.userId = p.id;
       scene.add(dot);
       scene.add(sprite);
-      planetObjects.push({ sprite, dot, orbitRadius, speed, startAngle, tiltAmount });
+      planetObjects.push({ id: p.id, sprite, dot, orbitRadius, speed, startAngle, tiltAmount, radius });
     }
 
     async function poll() {
@@ -297,10 +363,12 @@
     setInterval(poll, 1000);
     poll();
 
-    fetch(`/api/qr/${viewId}`).then(r => r.json()).then(data => {
-      document.getElementById('qr-img').src = data.dataUrl;
-      document.getElementById('qr-url').textContent = data.url;
-    });
+    if (isOwn) {
+      fetch(`/api/qr/${viewId}`).then(r => r.json()).then(data => {
+        document.getElementById('qr-img').src = data.dataUrl;
+        document.getElementById('qr-url').textContent = data.url;
+      });
+    }
 
     // Click + hover on planets
     const raycaster = new THREE.Raycaster();
@@ -320,20 +388,6 @@
       return hits.length ? hits[0].object.userData.userId : null;
     }
 
-    let hovering = false;
-    canvas.addEventListener('pointermove', e => {
-      hovering = !!pick(e);
-      canvas.classList.toggle('hover', hovering);
-    });
-    canvas.addEventListener('pointerleave', () => {
-      hovering = false;
-      canvas.classList.remove('hover');
-    });
-    canvas.addEventListener('click', e => {
-      const id = pick(e);
-      if (id) location.href = `/orbit.html?id=${id}`;
-    });
-
     // Zoom
     const MIN_DIST = 5, MAX_DIST = 40;
     let cameraDistance = 14;
@@ -345,27 +399,71 @@
       setZoom(cameraDistance * (1 + e.deltaY * 0.004));
     }, { passive: false });
 
-    // Pinch zoom
+    // Camera orbit (drag) + pinch zoom
+    let azimuth = 0;
+    let polar = 1.35;            // ~12° above the disc plane
+    const POLAR_MIN = 0.18;
+    const POLAR_MAX = Math.PI - 0.30;
+    let userRotated = false;
+
+    let hoveredId = null;
+    const TAP_THRESHOLD = 8;
     const activePointers = new Map();
     let pinchStartDist = 0, pinchStartCam = 0;
+
+    canvas.addEventListener('pointermove', e => {
+      if (activePointers.size === 0) {
+        hoveredId = pick(e);
+        canvas.classList.toggle('hover', !!hoveredId);
+      }
+    });
+    canvas.addEventListener('pointerleave', () => {
+      hoveredId = null;
+      canvas.classList.remove('hover');
+    });
+
     canvas.addEventListener('pointerdown', e => {
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, dragged: false });
+      canvas.setPointerCapture?.(e.pointerId);
       if (activePointers.size === 2) {
         const [a, b] = [...activePointers.values()];
         pinchStartDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         pinchStartCam = cameraDistance;
       }
     });
+
     canvas.addEventListener('pointermove', e => {
-      if (!activePointers.has(e.pointerId)) return;
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const p = activePointers.get(e.pointerId);
+      if (!p) return;
+      const prevX = p.x, prevY = p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (Math.hypot(p.x - p.sx, p.y - p.sy) > TAP_THRESHOLD) p.dragged = true;
+
       if (activePointers.size === 2) {
         const [a, b] = [...activePointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         setZoom(pinchStartCam * (pinchStartDist / d));
+      } else if (activePointers.size === 1) {
+        const dx = p.x - prevX;
+        const dy = p.y - prevY;
+        const k = 0.005;
+        azimuth -= dx * k;
+        polar -= dy * k;
+        polar = Math.max(POLAR_MIN, Math.min(POLAR_MAX, polar));
+        userRotated = true;
       }
     });
-    function endPointer(e) { activePointers.delete(e.pointerId); }
+
+    function endPointer(e) {
+      const p = activePointers.get(e.pointerId);
+      activePointers.delete(e.pointerId);
+      if (!p) return;
+      if (!p.dragged && activePointers.size === 0) {
+        const id = pick(e);
+        if (id) location.href = `/orbit.html?id=${id}`;
+      }
+    }
     canvas.addEventListener('pointerup', endPointer);
     canvas.addEventListener('pointercancel', endPointer);
 
@@ -379,12 +477,13 @@
       const dt = (now - lastFrame) / 1000;
       lastFrame = now;
 
-      const targetScale = hovering ? 0.05 : 1;
+      const targetScale = hoveredId ? 0.05 : 1;
       timeScale += (targetScale - timeScale) * Math.min(1, dt * 8);
       sceneTime += dt * timeScale;
       const t = sceneTime;
 
       planet.rotation.y = t * 0.08;
+      let hoveredDot = null;
       for (const u of planetObjects) {
         const angle = u.startAngle + t * u.speed;
         const x = Math.cos(angle) * u.orbitRadius;
@@ -392,10 +491,28 @@
         const z = Math.sin(angle) * u.orbitRadius;
         u.sprite.position.set(x, y + 0.4, z);
         u.dot.position.set(x, y, z);
+        if (u.id === hoveredId) hoveredDot = u.dot;
       }
-      camera.position.x = Math.sin(t * 0.04) * cameraDistance;
-      camera.position.z = Math.cos(t * 0.04) * cameraDistance;
-      camera.position.y = 3 + Math.sin(t * 0.06) * 1.5;
+
+      // Hover halo — pulses on wall-clock so freeze-on-hover doesn't stop the pulse
+      if (hoveredDot) {
+        const r = hoveredDot.geometry.parameters.radius || 0.35;
+        const pulse = 0.5 + Math.sin(now * 0.0025) * 0.5;
+        const scale = r * (1.15 + pulse * 0.10);
+        hoverHalo.position.copy(hoveredDot.position);
+        hoverHalo.scale.setScalar(scale);
+        hoverHalo.material.opacity = 0.45 + pulse * 0.18;
+        hoverHalo.visible = true;
+      } else {
+        hoverHalo.visible = false;
+      }
+      if (!userRotated && activePointers.size === 0) {
+        azimuth += dt * 0.04 * timeScale;
+      }
+      const sinP = Math.sin(polar);
+      camera.position.x = sinP * Math.sin(azimuth) * cameraDistance;
+      camera.position.y = Math.cos(polar) * cameraDistance;
+      camera.position.z = sinP * Math.cos(azimuth) * cameraDistance;
       camera.lookAt(0, 0, 0);
       renderer.render(scene, camera);
     }

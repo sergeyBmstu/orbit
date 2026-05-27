@@ -110,6 +110,22 @@
     scene.add(fillLight);
     scene.add(new THREE.AmbientLight(0x8090a8, 0.5));
 
+    // ---------- Hover halo ----------
+    const hoverHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 32, 32),
+      new THREE.MeshBasicMaterial({
+        color: 0x8ce6ff,
+        transparent: true,
+        opacity: 0,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false,
+      })
+    );
+    hoverHalo.visible = false;
+    scene.add(hoverHalo);
+
     const textureLoader = new THREE.TextureLoader();
 
     // ---------- Hash + RNG ----------
@@ -154,40 +170,7 @@
       const rng = mulberry32(seed);
       const arch = ARCHETYPES[Math.floor(rng() * ARCHETYPES.length)];
       const texUrl = arch.tex[Math.floor(rng() * arch.tex.length)];
-      // ring chance — original used >0.78, slightly higher feels better visually here
-      const rings = rng() > 0.74 && arch.name !== 'gasCold';
-      const ringHue = ({
-        gasWarm: 38, gasCold: 45, ice: 200, rocky: 20, lava: 10, ocean: 200,
-      })[arch.name];
-      return { archetype: arch.name, textureUrl: texUrl, rings, ringHue, seed };
-    }
-
-    function makeRingTexture(seed, hue) {
-      const c = document.createElement('canvas');
-      c.width = 512; c.height = 64;
-      const ctx = c.getContext('2d');
-      const rng = mulberry32(seed + 1);
-      ctx.clearRect(0, 0, 512, 64);
-      for (let i = 0; i < 32; i++) {
-        const x = i * 16;
-        const stripe = rng() > 0.5 ? `hsl(${hue}, 50%, 75%)` : 'rgba(255,255,255,0.85)';
-        ctx.fillStyle = stripe;
-        ctx.globalAlpha = 0.55 + rng() * 0.4;
-        ctx.fillRect(x, 0, 16, 64);
-      }
-      ctx.globalAlpha = 1;
-      const fade = ctx.createLinearGradient(0, 0, 512, 0);
-      fade.addColorStop(0, 'rgba(0,0,0,1)');
-      fade.addColorStop(0.08, 'rgba(0,0,0,0)');
-      fade.addColorStop(0.92, 'rgba(0,0,0,0)');
-      fade.addColorStop(1, 'rgba(0,0,0,1)');
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = fade;
-      ctx.fillRect(0, 0, 512, 64);
-      ctx.globalCompositeOperation = 'source-over';
-      const tex = new THREE.CanvasTexture(c);
-      tex.encoding = THREE.sRGBEncoding;
-      return tex;
+      return { archetype: arch.name, textureUrl: texUrl, seed };
     }
 
     function createPlanetMesh(id, isMe) {
@@ -201,32 +184,6 @@
       });
       const core = new THREE.Mesh(new THREE.SphereGeometry(radius, 32, 32), surf);
       group.add(core);
-
-      if (p.rings) {
-        const ringInner = radius * 1.4;
-        const ringOuter = radius * 2.1;
-        const ringGeom = new THREE.RingGeometry(ringInner, ringOuter, 96, 1);
-        // remap UVs radially
-        const uv = ringGeom.attributes.uv;
-        const pos = ringGeom.attributes.position;
-        for (let i = 0; i < uv.count; i++) {
-          const x = pos.getX(i), y = pos.getY(i);
-          const r = Math.hypot(x, y);
-          const angle = Math.atan2(y, x);
-          uv.setXY(i, angle / (Math.PI * 2) + 0.5, (r - ringInner) / (ringOuter - ringInner));
-        }
-        uv.needsUpdate = true;
-        const ringMat = new THREE.MeshBasicMaterial({
-          map: makeRingTexture(p.seed, p.ringHue),
-          side: THREE.DoubleSide,
-          transparent: true,
-          depthWrite: false,
-        });
-        const ring = new THREE.Mesh(ringGeom, ringMat);
-        ring.rotation.x = Math.PI / 2 - 0.35;
-        ring.rotation.y = 0.15;
-        group.add(ring);
-      }
 
       group.userData.spinSpeed = 0.0015 + (mulberry32(p.seed)() * 0.003);
       group.userData.core = core;
@@ -289,14 +246,6 @@
           group.position.copy(pos);
           group.userData.userId = u.id;
           group.userData.core.userData.userId = u.id;
-
-          if (isMe) {
-            const ringGeom = new THREE.TorusGeometry(group.userData.radius * 1.35, group.userData.radius * 0.04, 12, 64);
-            const ringMat = new THREE.MeshBasicMaterial({ color: 0xC78A93, transparent: true, opacity: 0.85, toneMapped: false });
-            const ring = new THREE.Mesh(ringGeom, ringMat);
-            ring.rotation.x = Math.PI / 2;
-            group.add(ring);
-          }
 
           const sprite = createNameSprite(u.name);
           const labelOffset = group.userData.radius + 10;
@@ -403,7 +352,7 @@
     const POLAR_MAX = Math.PI - 0.30; // keep camera above the disc
     let userRotated = false;
 
-    let hovering = false;
+    let hoveredId = null;
     const TAP_THRESHOLD = 8;     // px — below this, pointerup = click
     const activePointers = new Map(); // id -> { x, y, dragged }
     let pinchStartDist = 0;
@@ -412,12 +361,12 @@
     canvas.addEventListener('pointermove', e => {
       // Hover state only matters when no pointer is pressed
       if (activePointers.size === 0) {
-        hovering = !!pick(e);
-        canvas.classList.toggle('hover', hovering);
+        hoveredId = pick(e);
+        canvas.classList.toggle('hover', !!hoveredId);
       }
     });
     canvas.addEventListener('pointerleave', () => {
-      hovering = false;
+      hoveredId = null;
       canvas.classList.remove('hover');
     });
 
@@ -478,7 +427,7 @@
       const now = performance.now();
       const dt = (now - lastFrame) / 1000;
       lastFrame = now;
-      const target = hovering ? 0.05 : 1;
+      const target = hoveredId ? 0.05 : 1;
       timeScale += (target - timeScale) * Math.min(1, dt * 8);
       sceneTime += dt * timeScale;
       const t = sceneTime;
@@ -486,6 +435,21 @@
       // Planet self-spin
       for (const { group } of planetById.values()) {
         group.rotation.y += (group.userData.spinSpeed || 0) * timeScale * 60 * dt;
+      }
+
+      // Hover halo — pulse around the focused planet (uses wall-clock so the
+      // pulse keeps going even while the hover-slowdown freezes the scene).
+      const hovered = hoveredId ? planetById.get(hoveredId) : null;
+      if (hovered) {
+        const r = hovered.group.userData.radius || 8;
+        const pulse = 0.5 + Math.sin(now * 0.0025) * 0.5; // ~2.5s period
+        const scale = r * (1.10 + pulse * 0.08);
+        hoverHalo.position.copy(hovered.pos);
+        hoverHalo.scale.setScalar(scale);
+        hoverHalo.material.opacity = 0.40 + pulse * 0.15;
+        hoverHalo.visible = true;
+      } else {
+        hoverHalo.visible = false;
       }
 
       // Camera: drift azimuth automatically until the user starts dragging.
