@@ -2,10 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Planet</title>
   <style>
     * { margin: 0; padding: 0; }
     body { background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
+    canvas { touch-action: none; }
     #build-version {
       position: fixed;
       bottom: 16px;
@@ -54,6 +56,15 @@
       font-size: 28px;
       font-weight: 600;
       z-index: 10;
+    }
+
+    @media (max-width: 640px) {
+      #title { top: max(env(safe-area-inset-top), 14px); left: 16px; font-size: 18px; }
+      #user-count { top: max(env(safe-area-inset-top), 14px); right: 16px; font-size: 18px; }
+      #qr-container { bottom: max(env(safe-area-inset-bottom), 14px); }
+      #qr-img { width: 120px; height: 120px; padding: 6px; border-radius: 10px; }
+      #qr-url { font-size: 11px; margin-top: 6px; }
+      #build-version { bottom: 8px; right: 10px; font-size: 10px; }
     }
   </style>
 </head>
