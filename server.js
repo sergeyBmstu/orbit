@@ -91,6 +91,22 @@ app.get('/api/version', (req, res) => {
   res.json({ build: BUILD_NUMBER });
 });
 
+app.get('/api/galaxy', (req, res) => {
+  const users = [...names.entries()].map(([id, name]) => ({ id, name }));
+  const seen = new Set();
+  const edges = [];
+  for (const [id, peers] of connections.entries()) {
+    for (const peer of peers) {
+      if (!names.has(peer)) continue;
+      const key = id < peer ? `${id}|${peer}` : `${peer}|${id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push([id, peer]);
+    }
+  }
+  res.json({ users, edges });
+});
+
 app.get('/api/qr', async (req, res) => {
   const url = `${baseURL}/join.html`;
   const dataUrl = await QRCode.toDataURL(url, { width: 300, margin: 2 });
@@ -109,7 +125,6 @@ app.get('/api/qr/:id', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nServer:  ${baseURL}`);
-  console.log(`Display: ${baseURL}/display.html`);
   console.log(`Join:    ${baseURL}/join.html`);
   console.log(`Orbit:   ${baseURL}/orbit.html\n`);
 });
