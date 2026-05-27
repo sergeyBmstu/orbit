@@ -310,6 +310,41 @@
       if (id) location.href = `/orbit.html?id=${id}`;
     });
 
+    // Zoom
+    const MIN_DIST = 5, MAX_DIST = 40;
+    let cameraDistance = 14;
+    function setZoom(d) {
+      cameraDistance = Math.min(MAX_DIST, Math.max(MIN_DIST, d));
+    }
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      setZoom(cameraDistance * (1 + e.deltaY * 0.004));
+    }, { passive: false });
+
+    // Pinch zoom
+    const activePointers = new Map();
+    let pinchStartDist = 0, pinchStartCam = 0;
+    canvas.addEventListener('pointerdown', e => {
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2) {
+        const [a, b] = [...activePointers.values()];
+        pinchStartDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        pinchStartCam = cameraDistance;
+      }
+    });
+    canvas.addEventListener('pointermove', e => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2) {
+        const [a, b] = [...activePointers.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        setZoom(pinchStartCam * (pinchStartDist / d));
+      }
+    });
+    function endPointer(e) { activePointers.delete(e.pointerId); }
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
+
     let sceneTime = Date.now() * 0.001;
     let lastFrame = performance.now();
     let timeScale = 1;
@@ -334,8 +369,8 @@
         u.sprite.position.set(x, y + 0.4, z);
         u.dot.position.set(x, y, z);
       }
-      camera.position.x = Math.sin(t * 0.04) * 14;
-      camera.position.z = Math.cos(t * 0.04) * 14;
+      camera.position.x = Math.sin(t * 0.04) * cameraDistance;
+      camera.position.z = Math.cos(t * 0.04) * cameraDistance;
       camera.position.y = 3 + Math.sin(t * 0.06) * 1.5;
       camera.lookAt(0, 0, 0);
       renderer.render(scene, camera);
