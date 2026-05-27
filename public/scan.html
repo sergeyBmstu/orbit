@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Scan</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a2e;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100dvh;
+      padding: 24px;
+    }
+    .container { text-align: center; max-width: 380px; width: 100%; }
+    h1 { font-size: 40px; margin-bottom: 16px; }
+    p { font-size: 18px; color: #aab; margin-bottom: 24px; }
+    .success p { color: #0fc; }
+    .error h1 { color: #f66; }
+    a {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 14px 28px;
+      background: linear-gradient(135deg, #0af, #0fc);
+      color: #000;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="state">
+    <h1>Scanning…</h1>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const target = params.get('target');
+    const state = document.getElementById('state');
+
+    async function run() {
+      if (!target) {
+        state.innerHTML = '<h1>No target</h1>';
+        return;
+      }
+      const scanner = localStorage.getItem('userId');
+      if (!scanner) {
+        location.replace('/join.html?next=' + encodeURIComponent(location.pathname + location.search));
+        return;
+      }
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scanner, target })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          state.className = 'container error';
+          state.innerHTML = `<h1>Oops</h1><p>${data.error || 'Scan failed'}</p><a href="/orbit.html">Go to your orbit</a>`;
+          return;
+        }
+        state.className = 'container success';
+        state.innerHTML = `<h1>&#127775;</h1><p>You joined <strong>${data.target.name}</strong>'s orbit</p><a href="/orbit.html">My orbit</a>`;
+      } catch (e) {
+        state.className = 'container error';
+        state.innerHTML = '<h1>Connection error</h1>';
+      }
+    }
+    run();
+  </script>
+</body>
+</html>
