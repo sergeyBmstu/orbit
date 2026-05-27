@@ -43,6 +43,7 @@ export default function Page() {
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [size, setSize] = useState({ w: 800, h: 600 });
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
   const fgRef = useRef<unknown>(null);
 
   useEffect(() => {
@@ -313,9 +314,18 @@ export default function Page() {
     [following, selectedId]
   );
 
-  const handleNodeClick = useCallback((node: unknown) => {
+  const handleNodeClick = useCallback(async (node: unknown) => {
     const n = node as GraphNode & { x?: number; y?: number; z?: number };
-    if (n.isStar) return;
+    if (n.isStar) {
+      const QRCode = await import("qrcode");
+      const url = await QRCode.toDataURL(window.location.href, {
+        width: 360,
+        margin: 1,
+        color: { dark: "#0b0c14", light: "#e7eaf6" },
+      });
+      setQrUrl(url);
+      return;
+    }
     setSelectedId(n.id);
     const fg = fgRef.current as {
       cameraPosition: (
@@ -464,23 +474,6 @@ export default function Page() {
           <p style={{ marginTop: 14, lineHeight: 1.5, opacity: 0.85, fontSize: 14 }}>
             {selectedUser.bio}
           </p>
-          {selectedUser.id !== ME_ID && (
-            <button
-              style={{
-                ...followBtn,
-                background: following.has(selectedUser.id)
-                  ? "rgba(255, 220, 120, 0.15)"
-                  : "rgba(255, 220, 120, 0.9)",
-                color: following.has(selectedUser.id) ? "#ffdc78" : "#0b0c14",
-                border: following.has(selectedUser.id)
-                  ? "1px solid rgba(255, 220, 120, 0.5)"
-                  : "1px solid transparent",
-              }}
-              onClick={() => toggleFollow(selectedUser.id)}
-            >
-              {following.has(selectedUser.id) ? "Unfollow" : "Follow"}
-            </button>
-          )}
 
           <ConnectionList
             label={`Following · ${connections.followingList.length}`}
@@ -504,8 +497,36 @@ export default function Page() {
       )}
 
       <div style={legend}>
-        Drag to rotate · scroll to zoom · click a planet
+        Drag to rotate · scroll to zoom · click a planet · click the star to share
       </div>
+
+      {qrUrl && (
+        <div
+          style={qrBackdrop}
+          onClick={() => setQrUrl(null)}
+        >
+          <div style={qrCard} onClick={(e) => e.stopPropagation()}>
+            <button style={closeBtn} onClick={() => setQrUrl(null)}>×</button>
+            <div style={{ fontSize: 11, letterSpacing: 2, opacity: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+              Join the orbit
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 18 }}>
+              Scan to enter the system
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrUrl}
+              alt="QR code"
+              width={280}
+              height={280}
+              style={{ display: "block", borderRadius: 10 }}
+            />
+            <div style={{ marginTop: 14, fontSize: 12, opacity: 0.5, wordBreak: "break-all", textAlign: "center" }}>
+              {typeof window !== "undefined" ? window.location.href : ""}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -665,4 +686,27 @@ const legend: React.CSSProperties = {
   fontSize: 12,
   fontFamily: "ui-sans-serif, system-ui, sans-serif",
   pointerEvents: "none",
+};
+
+const qrBackdrop: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background: "rgba(5, 6, 13, 0.7)",
+  backdropFilter: "blur(6px)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 100,
+};
+
+const qrCard: React.CSSProperties = {
+  position: "relative",
+  padding: "32px 36px",
+  background: "rgba(15, 18, 30, 0.96)",
+  border: "1px solid rgba(255,255,255,0.1)",
+  borderRadius: 16,
+  color: "#e7eaf6",
+  textAlign: "center",
+  width: 360,
+  fontFamily: "ui-sans-serif, system-ui, sans-serif",
 };
