@@ -11,6 +11,11 @@ const names = new Map();        // userId -> name
 const connections = new Map();  // userId -> Set<userId>
 const joinedAt = new Map();     // userId -> timestamp (for /api/users ordering)
 
+const SEED_ID = '0';
+names.set(SEED_ID, 'Sergey Kochetov');
+connections.set(SEED_ID, new Set());
+joinedAt.set(SEED_ID, Date.now());
+
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -75,7 +80,8 @@ app.post('/api/scan', (req, res) => {
     return res.status(404).json({ error: 'Unknown user' });
   }
   connections.get(target).add(scanner);
-  console.log(`* scan: ${names.get(scanner)} -> ${names.get(target)}`);
+  connections.get(scanner).add(target);
+  console.log(`* scan: ${names.get(scanner)} <-> ${names.get(target)}`);
   res.json({ ok: true, target: { id: target, name: names.get(target) } });
 });
 
