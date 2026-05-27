@@ -1,5 +1,0 @@
-[phases.build]
-cmds = ['git rev-list --count HEAD > .build-number']
-
-[start]
-cmd = 'node server.js'

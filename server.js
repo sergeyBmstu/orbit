@@ -3,21 +3,7 @@ const QRCode = require('qrcode');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { execSync } = require('child_process');
-
-let BUILD_NUMBER = '00';
-try {
-  // Railway: number is baked into .build-number during nixpacks build phase
-  const fs = require('fs');
-  const count = parseInt(fs.readFileSync(path.join(__dirname, '.build-number'), 'utf8').trim(), 10);
-  BUILD_NUMBER = String(count).padStart(2, '0');
-} catch (e) {
-  try {
-    // Local dev fallback: read from git directly
-    const count = parseInt(execSync('git rev-list --count HEAD 2>/dev/null').toString().trim(), 10);
-    BUILD_NUMBER = String(count).padStart(2, '0');
-  } catch (e2) {}
-}
+const { build: BUILD_NUMBER } = require('./version.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
