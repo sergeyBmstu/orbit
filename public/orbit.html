@@ -2,10 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Your Orbit</title>
   <style>
     * { margin: 0; padding: 0; }
     body { background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
+    canvas { touch-action: none; }
     #build-version {
       position: fixed;
       bottom: 16px;
@@ -82,6 +84,18 @@
     #title.with-back { left: 160px; }
     canvas { cursor: default; }
     canvas.hover { cursor: pointer; }
+
+    @media (max-width: 640px) {
+      #title { top: max(env(safe-area-inset-top), 14px); left: 16px; font-size: 18px; }
+      #title small { font-size: 11px; margin-top: 2px; }
+      #title.with-back { left: 110px; font-size: 16px; }
+      #user-count { top: max(env(safe-area-inset-top), 14px); right: 16px; font-size: 16px; }
+      #back { top: max(env(safe-area-inset-top), 14px); left: 14px; padding: 8px 12px; font-size: 12px; }
+      #qr-container { bottom: max(env(safe-area-inset-bottom), 14px); }
+      #qr-img { width: 120px; height: 120px; padding: 6px; border-radius: 10px; }
+      #qr-url { font-size: 10px; max-width: 240px; margin-top: 6px; }
+      #build-version { bottom: 8px; right: 10px; font-size: 10px; }
+    }
   </style>
 </head>
 <body>
