@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Planet</title>
+  <title>Your Orbit</title>
   <style>
     * { margin: 0; padding: 0; }
     body { background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
@@ -23,16 +23,18 @@
     }
     #qr-url {
       color: #667;
-      font-size: 14px;
+      font-size: 12px;
       margin-top: 8px;
       font-family: monospace;
+      max-width: 280px;
+      word-break: break-all;
     }
     #user-count {
       position: fixed;
       top: 30px;
       right: 40px;
       color: #0af;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 600;
       z-index: 10;
     }
@@ -41,15 +43,41 @@
       top: 30px;
       left: 40px;
       color: #fff;
-      font-size: 28px;
+      font-size: 24px;
       font-weight: 600;
       z-index: 10;
     }
+    #title small {
+      display: block;
+      font-size: 13px;
+      color: #889;
+      font-weight: 400;
+      margin-top: 4px;
+    }
+    #back {
+      position: fixed;
+      top: 30px;
+      left: 40px;
+      z-index: 11;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      text-decoration: none;
+      display: none;
+    }
+    #back:hover { background: rgba(255,255,255,0.15); }
+    #title.with-back { left: 160px; }
+    canvas { cursor: default; }
+    canvas.hover { cursor: pointer; }
   </style>
 </head>
 <body>
-  <div id="title">Scan to join</div>
-  <div id="user-count">0 explorers</div>
+  <a id="back" href="/orbit.html">&larr; My orbit</a>
+  <div id="title">Loading…</div>
+  <div id="user-count">0 planets</div>
   <div id="qr-container">
     <img id="qr-img" />
     <div id="qr-url"></div>
@@ -57,6 +85,21 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
+    const myId = localStorage.getItem('userId');
+    const params = new URLSearchParams(location.search);
+    const viewId = params.get('id') || myId;
+    const isOwn = !params.get('id') || params.get('id') === myId;
+
+    if (!viewId) {
+      location.replace('/join.html?next=/orbit.html');
+    }
+    if (!isOwn) {
+      const back = document.getElementById('back');
+      back.style.display = 'inline-block';
+      back.href = myId ? '/orbit.html' : '/join.html';
+      document.getElementById('title').classList.add('with-back');
+    }
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1000);
     camera.position.set(0, 4, 14);
@@ -75,20 +118,18 @@
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.3 })));
 
-    // Planet
+    // Planet (the current user)
     const planet = new THREE.Mesh(
       new THREE.SphereGeometry(2.2, 64, 64),
       new THREE.MeshStandardMaterial({ color: 0x1a5fb4, emissive: 0x0a2f6a, roughness: 0.6, metalness: 0.3 })
     );
     scene.add(planet);
 
-    // Glow
     scene.add(new THREE.Mesh(
       new THREE.SphereGeometry(2.6, 32, 32),
       new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.12, side: THREE.BackSide })
     ));
 
-    // Orbit rings
     for (let r = 4; r <= 8; r += 1.5) {
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(r, 0.02, 8, 100),
@@ -98,78 +139,84 @@
       scene.add(ring);
     }
 
-    // Lights
     scene.add(new THREE.AmbientLight(0x404060));
     const light = new THREE.PointLight(0xffffff, 1.5);
     light.position.set(10, 10, 10);
     scene.add(light);
 
-    // User management
-    const userObjects = [];
+    const planetObjects = [];
     const knownIds = new Set();
     const colors = ['#00ffcc', '#ff6cf0', '#ffcc00', '#00ccff', '#ff6633', '#66ff66', '#cc99ff', '#ff3366'];
+
+    function hashIndex(id) {
+      let h = 0;
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+      return Math.abs(h);
+    }
 
     function createTextSprite(text, color) {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = 512;
       canvas.height = 128;
-
       ctx.font = 'bold 48px -apple-system, Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-
       ctx.shadowColor = color;
       ctx.shadowBlur = 20;
       ctx.fillStyle = color;
       ctx.fillText(text, 256, 64);
       ctx.shadowBlur = 0;
       ctx.fillText(text, 256, 64);
-
       const texture = new THREE.CanvasTexture(canvas);
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
       sprite.scale.set(4, 1, 1);
       return sprite;
     }
 
-    function hashIndex(id) {
-      const s = String(id);
-      let h = 0;
-      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-      return Math.abs(h);
-    }
+    function addPlanet(p) {
+      const seed = hashIndex(p.id);
+      const color = colors[seed % colors.length];
+      const sprite = createTextSprite(p.name, color);
+      const orbitRadius = 3.5 + (seed % 100) / 100 * 5;
+      const speed = 0.15 + ((seed >> 7) % 100) / 100 * 0.35;
+      const startAngle = ((seed >> 13) % 1000) / 1000 * Math.PI * 2;
+      const tiltAmount = (((seed >> 17) % 1000) / 1000 - 0.5) * 1.2;
 
-    function addUser(user) {
-      const color = colors[hashIndex(user.id) % colors.length];
-      const sprite = createTextSprite(user.name, color);
-      const orbitRadius = 3.5 + Math.random() * 5;
-      const speed = 0.15 + Math.random() * 0.35;
-      const startAngle = Math.random() * Math.PI * 2;
-      const tiltAmount = (Math.random() - 0.5) * 1.2;
-
-      // Small dot
       const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.08, 8, 8),
+        new THREE.SphereGeometry(0.18, 16, 16),
         new THREE.MeshBasicMaterial({ color: new THREE.Color(color) })
       );
+      dot.userData.userId = p.id;
+      sprite.userData.userId = p.id;
       scene.add(dot);
       scene.add(sprite);
-
-      userObjects.push({ sprite, dot, orbitRadius, speed, startAngle, tiltAmount });
+      planetObjects.push({ sprite, dot, orbitRadius, speed, startAngle, tiltAmount });
     }
 
-    // Polling
     async function poll() {
       try {
-        const res = await fetch('/api/users');
-        const users = await res.json();
-        const count = users.length;
+        const res = await fetch(`/api/users/${viewId}`);
+        if (res.status === 404) {
+          if (isOwn) {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('userName');
+            location.replace('/join.html?next=/orbit.html');
+          } else {
+            document.getElementById('title').innerHTML = 'Unknown user';
+          }
+          return;
+        }
+        const user = await res.json();
+        const title = document.getElementById('title');
+        title.innerHTML = `${user.name}<small>${isOwn ? 'your orbit' : 'orbit'}</small>`;
+        const count = user.planets.length;
         document.getElementById('user-count').textContent =
-          `${count} explorer${count !== 1 ? 's' : ''}`;
-        for (const u of users) {
-          if (!knownIds.has(u.id)) {
-            knownIds.add(u.id);
-            addUser(u);
+          `${count} planet${count !== 1 ? 's' : ''}`;
+        for (const p of user.planets) {
+          if (!knownIds.has(p.id)) {
+            knownIds.add(p.id);
+            addPlanet(p);
           }
         }
       } catch (e) {}
@@ -177,20 +224,42 @@
     setInterval(poll, 1000);
     poll();
 
-    // QR
-    fetch('/api/qr').then(r => r.json()).then(data => {
+    fetch(`/api/qr/${viewId}`).then(r => r.json()).then(data => {
       document.getElementById('qr-img').src = data.dataUrl;
       document.getElementById('qr-url').textContent = data.url;
     });
 
-    // Animate
+    // Click + hover on planets
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const canvas = renderer.domElement;
+
+    function pick(event) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const targets = [];
+      for (const o of planetObjects) {
+        targets.push(o.dot, o.sprite);
+      }
+      const hits = raycaster.intersectObjects(targets, false);
+      return hits.length ? hits[0].object.userData.userId : null;
+    }
+
+    canvas.addEventListener('pointermove', e => {
+      canvas.classList.toggle('hover', !!pick(e));
+    });
+    canvas.addEventListener('click', e => {
+      const id = pick(e);
+      if (id) location.href = `/orbit.html?id=${id}`;
+    });
+
     function animate() {
       requestAnimationFrame(animate);
       const t = Date.now() * 0.001;
-
       planet.rotation.y = t * 0.08;
-
-      for (const u of userObjects) {
+      for (const u of planetObjects) {
         const angle = u.startAngle + t * u.speed;
         const x = Math.cos(angle) * u.orbitRadius;
         const y = Math.sin(u.tiltAmount) * Math.sin(angle) * u.orbitRadius * 0.25;
@@ -198,12 +267,10 @@
         u.sprite.position.set(x, y + 0.4, z);
         u.dot.position.set(x, y, z);
       }
-
       camera.position.x = Math.sin(t * 0.04) * 14;
       camera.position.z = Math.cos(t * 0.04) * 14;
       camera.position.y = 3 + Math.sin(t * 0.06) * 1.5;
       camera.lookAt(0, 0, 0);
-
       renderer.render(scene, camera);
     }
     animate();

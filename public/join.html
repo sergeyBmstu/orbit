@@ -61,10 +61,14 @@
   <div class="container success" id="done" style="display:none">
     <h1>&#127881;</h1>
     <p>You're in orbit, <strong id="who"></strong>!</p>
+    <a id="my-orbit" href="/orbit.html" style="display:inline-block; margin-top:24px; padding:14px 28px; background:linear-gradient(135deg,#0af,#0fc); color:#000; border-radius:12px; text-decoration:none; font-weight:700; font-size:18px;">My orbit</a>
     <div class="hint">Look at the big screen</div>
   </div>
 
   <script>
+    const params = new URLSearchParams(location.search);
+    const next = params.get('next');
+
     async function join() {
       const name = document.getElementById('name').value.trim();
       if (!name) return;
@@ -75,11 +79,17 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name })
         });
-        if (res.ok) {
-          document.getElementById('form').style.display = 'none';
-          document.getElementById('who').textContent = name;
-          document.getElementById('done').style.display = 'block';
+        if (!res.ok) throw new Error('join failed');
+        const user = await res.json();
+        localStorage.setItem('userId', user.id);
+        localStorage.setItem('userName', user.name);
+        if (next) {
+          location.href = next;
+          return;
         }
+        document.getElementById('form').style.display = 'none';
+        document.getElementById('who').textContent = name;
+        document.getElementById('done').style.display = 'block';
       } catch (e) {
         alert('Connection error');
         document.getElementById('btn').disabled = false;
