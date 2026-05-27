@@ -115,7 +115,8 @@ app.get('/api/qr/:id', async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\nServer:  ${baseURL}`);
+  console.log(`\nBuild:   v${BUILD_NUMBER}`);
+  console.log(`Server:  ${baseURL}`);
   console.log(`Display: ${baseURL}/display.html`);
   console.log(`Join:    ${baseURL}/join.html`);
   console.log(`Orbit:   ${baseURL}/orbit.html\n`);
