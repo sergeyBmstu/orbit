@@ -6,6 +6,16 @@
   <style>
     * { margin: 0; padding: 0; }
     body { background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
+    #build-version {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      color: rgba(255,255,255,0.2);
+      font-size: 11px;
+      font-family: monospace;
+      z-index: 100;
+      user-select: none;
+    }
     #qr-container {
       position: fixed;
       bottom: 30px;
@@ -48,6 +58,7 @@
   </style>
 </head>
 <body>
+  <div id="build-version">v00</div>
   <div id="title">Scan to join</div>
   <div id="user-count">0 explorers</div>
   <div id="qr-container">
@@ -157,6 +168,11 @@
 
       userObjects.push({ sprite, dot, orbitRadius, speed, startAngle, tiltAmount });
     }
+
+    // Build version
+    fetch('/api/version').then(r => r.json()).then(d => {
+      document.getElementById('build-version').textContent = `v${d.build}`;
+    }).catch(() => {});
 
     // Polling
     async function poll() {
