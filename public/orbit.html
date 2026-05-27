@@ -171,6 +171,7 @@
       back.style.display = 'inline-block';
       back.href = myId ? '/orbit.html' : '/join.html';
       document.getElementById('title').classList.add('with-back');
+      document.getElementById('qr-container').style.display = 'none';
     }
 
     const scene = new THREE.Scene();
@@ -362,10 +363,12 @@
     setInterval(poll, 1000);
     poll();
 
-    fetch(`/api/qr/${viewId}`).then(r => r.json()).then(data => {
-      document.getElementById('qr-img').src = data.dataUrl;
-      document.getElementById('qr-url').textContent = data.url;
-    });
+    if (isOwn) {
+      fetch(`/api/qr/${viewId}`).then(r => r.json()).then(data => {
+        document.getElementById('qr-img').src = data.dataUrl;
+        document.getElementById('qr-url').textContent = data.url;
+      });
+    }
 
     // Click + hover on planets
     const raycaster = new THREE.Raycaster();
@@ -385,20 +388,6 @@
       return hits.length ? hits[0].object.userData.userId : null;
     }
 
-    let hoveredId = null;
-    canvas.addEventListener('pointermove', e => {
-      hoveredId = pick(e);
-      canvas.classList.toggle('hover', !!hoveredId);
-    });
-    canvas.addEventListener('pointerleave', () => {
-      hoveredId = null;
-      canvas.classList.remove('hover');
-    });
-    canvas.addEventListener('click', e => {
-      const id = pick(e);
-      if (id) location.href = `/orbit.html?id=${id}`;
-    });
-
     // Zoom
     const MIN_DIST = 5, MAX_DIST = 40;
     let cameraDistance = 14;
@@ -410,27 +399,71 @@
       setZoom(cameraDistance * (1 + e.deltaY * 0.004));
     }, { passive: false });
 
-    // Pinch zoom
+    // Camera orbit (drag) + pinch zoom
+    let azimuth = 0;
+    let polar = 1.35;            // ~12° above the disc plane
+    const POLAR_MIN = 0.18;
+    const POLAR_MAX = Math.PI - 0.30;
+    let userRotated = false;
+
+    let hoveredId = null;
+    const TAP_THRESHOLD = 8;
     const activePointers = new Map();
     let pinchStartDist = 0, pinchStartCam = 0;
+
+    canvas.addEventListener('pointermove', e => {
+      if (activePointers.size === 0) {
+        hoveredId = pick(e);
+        canvas.classList.toggle('hover', !!hoveredId);
+      }
+    });
+    canvas.addEventListener('pointerleave', () => {
+      hoveredId = null;
+      canvas.classList.remove('hover');
+    });
+
     canvas.addEventListener('pointerdown', e => {
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, dragged: false });
+      canvas.setPointerCapture?.(e.pointerId);
       if (activePointers.size === 2) {
         const [a, b] = [...activePointers.values()];
         pinchStartDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         pinchStartCam = cameraDistance;
       }
     });
+
     canvas.addEventListener('pointermove', e => {
-      if (!activePointers.has(e.pointerId)) return;
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const p = activePointers.get(e.pointerId);
+      if (!p) return;
+      const prevX = p.x, prevY = p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (Math.hypot(p.x - p.sx, p.y - p.sy) > TAP_THRESHOLD) p.dragged = true;
+
       if (activePointers.size === 2) {
         const [a, b] = [...activePointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         setZoom(pinchStartCam * (pinchStartDist / d));
+      } else if (activePointers.size === 1) {
+        const dx = p.x - prevX;
+        const dy = p.y - prevY;
+        const k = 0.005;
+        azimuth -= dx * k;
+        polar -= dy * k;
+        polar = Math.max(POLAR_MIN, Math.min(POLAR_MAX, polar));
+        userRotated = true;
       }
     });
-    function endPointer(e) { activePointers.delete(e.pointerId); }
+
+    function endPointer(e) {
+      const p = activePointers.get(e.pointerId);
+      activePointers.delete(e.pointerId);
+      if (!p) return;
+      if (!p.dragged && activePointers.size === 0) {
+        const id = pick(e);
+        if (id) location.href = `/orbit.html?id=${id}`;
+      }
+    }
     canvas.addEventListener('pointerup', endPointer);
     canvas.addEventListener('pointercancel', endPointer);
 
@@ -473,9 +506,13 @@
       } else {
         hoverHalo.visible = false;
       }
-      camera.position.x = Math.sin(t * 0.04) * cameraDistance;
-      camera.position.z = Math.cos(t * 0.04) * cameraDistance;
-      camera.position.y = 3 + Math.sin(t * 0.06) * 1.5;
+      if (!userRotated && activePointers.size === 0) {
+        azimuth += dt * 0.04 * timeScale;
+      }
+      const sinP = Math.sin(polar);
+      camera.position.x = sinP * Math.sin(azimuth) * cameraDistance;
+      camera.position.y = Math.cos(polar) * cameraDistance;
+      camera.position.z = sinP * Math.cos(azimuth) * cameraDistance;
       camera.lookAt(0, 0, 0);
       renderer.render(scene, camera);
     }
