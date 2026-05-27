@@ -231,8 +231,10 @@
     function discPositionFor(id, index) {
       const rng = mulberry32(hashIndex(id) + index * 31);
       const theta = rng() * Math.PI * 2;
-      const r = ORBIT_RADIUS + (rng() - 0.5) * 90;
-      const y = (rng() - 0.5) * 50;
+      const r = ORBIT_RADIUS + (rng() - 0.5) * 180;
+      // Heavier vertical spread so a busy galaxy doesn't collapse into one ring.
+      // Bias to a softer distribution via two summed randoms (~triangular).
+      const y = ((rng() + rng()) - 1) * 220;
       return new THREE.Vector3(r * Math.cos(theta), y, r * Math.sin(theta));
     }
 
@@ -337,20 +339,6 @@
       const hits = raycaster.intersectObjects(targets, false);
       return hits.length ? hits[0].object.userData.userId : null;
     }
-    let hovering = false;
-    canvas.addEventListener('pointermove', e => {
-      hovering = !!pick(e);
-      canvas.classList.toggle('hover', hovering);
-    });
-    canvas.addEventListener('pointerleave', () => {
-      hovering = false;
-      canvas.classList.remove('hover');
-    });
-    canvas.addEventListener('click', e => {
-      const id = pick(e);
-      if (id) location.href = `/orbit.html?id=${id}`;
-    });
-
     // ---------- Zoom ----------
     const MIN_DIST = 60;
     const MAX_DIST = 3000;
@@ -381,29 +369,75 @@
       setZoom(cameraDistance * (1 + e.deltaY * 0.004));
     }, { passive: false });
 
-    // Pinch zoom
-    const activePointers = new Map();
+    // ---------- Camera orbit (drag) + pinch zoom ----------
+    let azimuth = 0;             // around Y axis
+    let polar = 1.30;            // from +Y axis; matches the previous 0.28y/d feel
+    const POLAR_MIN = 0.18;
+    const POLAR_MAX = Math.PI - 0.30; // keep camera above the disc
+    let userRotated = false;
+
+    let hovering = false;
+    const TAP_THRESHOLD = 8;     // px — below this, pointerup = click
+    const activePointers = new Map(); // id -> { x, y, dragged }
     let pinchStartDist = 0;
     let pinchStartCam = 0;
+
+    canvas.addEventListener('pointermove', e => {
+      // Hover state only matters when no pointer is pressed
+      if (activePointers.size === 0) {
+        hovering = !!pick(e);
+        canvas.classList.toggle('hover', hovering);
+      }
+    });
+    canvas.addEventListener('pointerleave', () => {
+      hovering = false;
+      canvas.classList.remove('hover');
+    });
+
     canvas.addEventListener('pointerdown', e => {
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, dragged: false });
+      canvas.setPointerCapture?.(e.pointerId);
       if (activePointers.size === 2) {
         const [a, b] = [...activePointers.values()];
         pinchStartDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         pinchStartCam = cameraDistance;
       }
     });
+
     canvas.addEventListener('pointermove', e => {
-      if (!activePointers.has(e.pointerId)) return;
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const p = activePointers.get(e.pointerId);
+      if (!p) return;
+      const prevX = p.x, prevY = p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (Math.hypot(p.x - p.sx, p.y - p.sy) > TAP_THRESHOLD) p.dragged = true;
+
       if (activePointers.size === 2) {
         const [a, b] = [...activePointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
         setZoom(pinchStartCam * (pinchStartDist / d));
+      } else if (activePointers.size === 1) {
+        const dx = p.x - prevX;
+        const dy = p.y - prevY;
+        // Drag horizontally → rotate around Y; vertically → tilt.
+        // Distance-aware sensitivity keeps the drag-to-arc feel consistent across zoom levels.
+        const k = 0.005;
+        azimuth -= dx * k;
+        polar -= dy * k;
+        polar = Math.max(POLAR_MIN, Math.min(POLAR_MAX, polar));
+        userRotated = true;
       }
     });
+
     function endPointer(e) {
+      const p = activePointers.get(e.pointerId);
       activePointers.delete(e.pointerId);
+      if (!p) return;
+      // Treat a pointerup with no drag as a click on a planet
+      if (!p.dragged && activePointers.size === 0) {
+        const id = pick(e);
+        if (id) location.href = `/orbit.html?id=${id}`;
+      }
     }
     canvas.addEventListener('pointerup', endPointer);
     canvas.addEventListener('pointercancel', endPointer);
@@ -427,10 +461,14 @@
         group.rotation.y += (group.userData.spinSpeed || 0) * timeScale * 60 * dt;
       }
 
-      // Camera orbits the system
-      camera.position.x = Math.sin(t * 0.04) * cameraDistance;
-      camera.position.z = Math.cos(t * 0.04) * cameraDistance;
-      camera.position.y = (cameraDistance * 0.15) + Math.sin(t * 0.03) * (cameraDistance * 0.06);
+      // Camera: drift azimuth automatically until the user starts dragging.
+      if (!userRotated && activePointers.size === 0) {
+        azimuth += dt * 0.04 * timeScale;
+      }
+      const sinP = Math.sin(polar);
+      camera.position.x = sinP * Math.sin(azimuth) * cameraDistance;
+      camera.position.y = Math.cos(polar) * cameraDistance;
+      camera.position.z = sinP * Math.cos(azimuth) * cameraDistance;
       camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
