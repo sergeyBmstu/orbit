@@ -4,31 +4,50 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Galaxy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --orbit-burgundy-200: #C78A93;
+      --orbit-burgundy-300: #A8525F;
+      --orbit-burgundy-400: #7E2A38;
+      --orbit-slate-300: #8C95A3;
+      --orbit-cream: #F4ECE4;
+      --orbit-space-0: #0A0E16;
+      --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; }
-    body { background: #05060d; overflow: hidden; font-family: -apple-system, sans-serif; }
+    body { background: var(--orbit-space-0); overflow: hidden; font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+    #build-info {
+      position: fixed; bottom: 16px; right: 20px; text-align: right;
+      color: rgba(244,236,228,0.2); font-size: 11px; font-family: monospace;
+      z-index: 100; user-select: none; line-height: 1.6;
+    }
     canvas { touch-action: none; cursor: default; display: block; }
     canvas.hover { cursor: pointer; }
     #title {
       position: fixed; top: 30px; left: 40px; z-index: 10;
-      color: #fff; font-size: 24px; font-weight: 600;
+      color: var(--orbit-cream); font-family: var(--font-display); font-size: 24px; font-weight: 400;
     }
     #title small {
-      display: block; font-size: 13px; color: #889; font-weight: 400; margin-top: 4px;
+      display: block; font-family: var(--font-ui); font-size: 13px; color: var(--orbit-slate-300); font-weight: 400; margin-top: 4px;
     }
     #count {
       position: fixed; top: 30px; right: 40px; z-index: 10;
-      color: #8ce6ff; font-size: 18px; font-weight: 600;
+      color: var(--orbit-burgundy-200); font-family: var(--font-display); font-size: 18px; font-weight: 400;
     }
     #back {
       position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 11;
-      padding: 12px 22px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 12px; color: #fff; font-size: 15px; text-decoration: none;
+      padding: 12px 22px; background: rgba(244,236,228,0.06); border: 1px solid rgba(244,236,228,0.14);
+      border-radius: 12px; color: var(--orbit-cream); font-family: var(--font-ui); font-size: 15px; text-decoration: none;
+      transition: background 0.2s, border-color 0.2s;
     }
-    #back:hover { background: rgba(255,255,255,0.15); }
+    #back:hover { background: rgba(244,236,228,0.1); border-color: rgba(244,236,228,0.3); }
     #empty {
       position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 10;
-      color: #889; font-size: 18px; text-align: center; display: none;
+      color: var(--orbit-slate-300); font-family: var(--font-ui); font-size: 18px; text-align: center; display: none;
     }
     @media (max-width: 640px) {
       #title { top: max(env(safe-area-inset-top), 14px); left: 16px; font-size: 18px; }
@@ -39,6 +58,7 @@
   </style>
 </head>
 <body>
+  <div id="build-info"><span id="build-version">v00</span><br><span id="build-started"></span></div>
   <div id="title">Galaxy<small>everyone in the universe</small></div>
   <div id="count">0</div>
   <div id="empty">No explorers yet.<br><small>Be the first to join.</small></div>
@@ -46,9 +66,16 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
+    fetch('/api/version').then(r => r.json()).then(d => {
+      document.getElementById('build-version').textContent = `v${d.build}`;
+      const t = new Date(d.startedAt);
+      document.getElementById('build-started').textContent =
+        `started ${t.toLocaleDateString()} ${t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+    }).catch(() => {});
+
     // ---------- Setup ----------
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x05060d);
+    scene.background = new THREE.Color(0x0A0E16);
 
     const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 1, 5000);
     camera.position.set(0, 80, 520);
@@ -168,12 +195,12 @@
       const c = document.createElement('canvas');
       c.width = 512; c.height = 128;
       const ctx = c.getContext('2d');
-      ctx.font = 'bold 56px -apple-system, Arial';
+      ctx.font = "500 56px 'Inter', -apple-system, Arial";
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(140, 200, 255, 0.8)';
+      ctx.shadowColor = 'rgba(199,138,147,0.8)';
       ctx.shadowBlur = 22;
-      ctx.fillStyle = '#e7eaf6';
+      ctx.fillStyle = '#F4ECE4';
       ctx.fillText(text, 256, 64);
       ctx.shadowBlur = 0;
       ctx.fillText(text, 256, 64);
@@ -255,7 +282,7 @@
         geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         edgeLines = new THREE.LineSegments(
           geo,
-          new THREE.LineBasicMaterial({ color: 0x6da0ff, transparent: true, opacity: 0.45 })
+          new THREE.LineBasicMaterial({ color: 0xA8525F, transparent: true, opacity: 0.4 })
         );
         scene.add(edgeLines);
       }

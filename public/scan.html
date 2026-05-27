@@ -4,54 +4,74 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Scan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --orbit-burgundy-300: #A8525F;
+      --orbit-burgundy-400: #7E2A38;
+      --orbit-cream: #F4ECE4;
+      --orbit-slate-300: #8C95A3;
+      --orbit-space-0: #0A0E16;
+      --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    #build-version {
+    #build-info {
       position: fixed;
       bottom: 16px;
       right: 20px;
-      color: rgba(255,255,255,0.2);
+      color: rgba(244,236,228,0.2);
       font-size: 11px;
       font-family: monospace;
       z-index: 100;
       user-select: none;
+      line-height: 1.6;
     }
     body {
-      background: #0a0a2e;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--orbit-space-0);
+      color: var(--orbit-cream);
+      font-family: var(--font-ui);
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100dvh;
       padding: 24px;
+      -webkit-font-smoothing: antialiased;
     }
     .container { text-align: center; max-width: 380px; width: 100%; }
-    h1 { font-size: 40px; margin-bottom: 16px; }
-    p { font-size: 18px; color: #aab; margin-bottom: 24px; }
-    .success p { color: #0fc; }
-    .error h1 { color: #f66; }
+    h1 { font-family: var(--font-display); font-size: 40px; font-weight: 400; margin-bottom: 16px; }
+    p { font-size: 18px; color: var(--orbit-slate-300); margin-bottom: 24px; }
+    .success p { color: var(--orbit-cream); }
+    .error h1 { color: var(--orbit-burgundy-300); }
     a {
       display: inline-block;
       margin-top: 16px;
       padding: 14px 28px;
-      background: linear-gradient(135deg, #0af, #0fc);
-      color: #000;
+      background: var(--orbit-burgundy-400);
+      color: var(--orbit-cream);
       border-radius: 12px;
       text-decoration: none;
       font-weight: 700;
       font-size: 18px;
+      font-family: var(--font-ui);
+      box-shadow: 0 0 24px rgba(126,42,56,0.3), 0 8px 20px rgba(0,0,0,0.3);
+      transition: background 0.2s, transform 0.2s;
     }
+    a:hover { background: var(--orbit-burgundy-300); transform: translateY(-1px); }
   </style>
 </head>
 <body>
-  <div id="build-version">v00</div>
+  <div id="build-info"><span id="build-version">v00</span><br><span id="build-started"></span></div>
   <div class="container" id="state">
     <h1>Scanning…</h1>
   </div>
   <script>
     fetch('/api/version').then(r => r.json()).then(d => {
       document.getElementById('build-version').textContent = `v${d.build}`;
+      const t = new Date(d.startedAt);
+      document.getElementById('build-started').textContent = `started ${t.toLocaleDateString()} ${t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }).catch(() => {});
 
     const params = new URLSearchParams(location.search);

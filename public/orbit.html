@@ -4,19 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Your Orbit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --orbit-burgundy-200: #C78A93;
+      --orbit-burgundy-300: #A8525F;
+      --orbit-burgundy-400: #7E2A38;
+      --orbit-burgundy-500: #5E1F2A;
+      --orbit-burgundy-600: #3F141C;
+      --orbit-slate-300: #8C95A3;
+      --orbit-slate-400: #4F5765;
+      --orbit-cream: #F4ECE4;
+      --orbit-space-0: #0A0E16;
+      --orbit-space-1: #131826;
+      --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; }
-    body { background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
+    body { background: var(--orbit-space-0); overflow: hidden; font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
     canvas { touch-action: none; }
-    #build-version {
+    #build-info {
       position: fixed;
       bottom: 16px;
       right: 20px;
-      color: rgba(255,255,255,0.2);
+      color: rgba(244,236,228,0.2);
       font-size: 11px;
       font-family: monospace;
       z-index: 100;
       user-select: none;
+      line-height: 1.6;
     }
     #qr-container {
       position: fixed;
@@ -34,7 +52,7 @@
       padding: 8px;
     }
     #qr-url {
-      color: #667;
+      color: var(--orbit-slate-400);
       font-size: 12px;
       margin-top: 8px;
       font-family: monospace;
@@ -45,24 +63,27 @@
       position: fixed;
       top: 30px;
       right: 40px;
-      color: #0af;
+      color: var(--orbit-burgundy-200);
+      font-family: var(--font-display);
       font-size: 24px;
-      font-weight: 600;
+      font-weight: 400;
       z-index: 10;
     }
     #title {
       position: fixed;
       top: 30px;
       left: 40px;
-      color: #fff;
+      color: var(--orbit-cream);
+      font-family: var(--font-display);
       font-size: 24px;
-      font-weight: 600;
+      font-weight: 400;
       z-index: 10;
     }
     #title small {
       display: block;
+      font-family: var(--font-ui);
       font-size: 13px;
-      color: #889;
+      color: var(--orbit-slate-300);
       font-weight: 400;
       margin-top: 4px;
     }
@@ -72,15 +93,17 @@
       left: 40px;
       z-index: 11;
       padding: 10px 18px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(244,236,228,0.06);
+      border: 1px solid rgba(244,236,228,0.14);
       border-radius: 10px;
-      color: #fff;
+      color: var(--orbit-cream);
       font-size: 14px;
+      font-family: var(--font-ui);
       text-decoration: none;
       display: none;
+      transition: background 0.2s, border-color 0.2s;
     }
-    #back:hover { background: rgba(255,255,255,0.15); }
+    #back:hover { background: rgba(244,236,228,0.1); border-color: rgba(244,236,228,0.3); }
     #title.with-back { left: 160px; }
     #view-galaxy {
       position: fixed;
@@ -88,15 +111,17 @@
       right: 40px;
       z-index: 11;
       padding: 10px 16px;
-      background: rgba(140, 200, 255, 0.12);
-      border: 1px solid rgba(140, 200, 255, 0.35);
+      background: rgba(126,42,56,0.16);
+      border: 1px solid var(--orbit-burgundy-300);
       border-radius: 10px;
-      color: #cde6ff;
+      color: var(--orbit-burgundy-200);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
+      font-family: var(--font-ui);
       text-decoration: none;
+      transition: background 0.2s;
     }
-    #view-galaxy:hover { background: rgba(140, 200, 255, 0.22); }
+    #view-galaxy:hover { background: rgba(126,42,56,0.3); }
     canvas { cursor: default; }
     canvas.hover { cursor: pointer; }
 
@@ -110,12 +135,12 @@
       #qr-container { bottom: max(env(safe-area-inset-bottom), 14px); }
       #qr-img { width: 120px; height: 120px; padding: 6px; border-radius: 10px; }
       #qr-url { font-size: 10px; max-width: 240px; margin-top: 6px; }
-      #build-version { bottom: 8px; right: 10px; font-size: 10px; }
+      #build-info { bottom: 8px; right: 10px; font-size: 10px; }
     }
   </style>
 </head>
 <body>
-  <div id="build-version">v00</div>
+  <div id="build-info"><span id="build-version">v00</span><br><span id="build-started"></span></div>
   <a id="back" href="/orbit.html">&larr; My orbit</a>
   <a id="view-galaxy" href="/galaxy.html">View galaxy &rarr;</a>
   <div id="title">Loading…</div>
@@ -129,6 +154,8 @@
   <script>
     fetch('/api/version').then(r => r.json()).then(d => {
       document.getElementById('build-version').textContent = `v${d.build}`;
+      const t = new Date(d.startedAt);
+      document.getElementById('build-started').textContent = `started ${t.toLocaleDateString()} ${t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }).catch(() => {});
 
     const myId = localStorage.getItem('userId');
@@ -220,13 +247,13 @@
 
     scene.add(new THREE.Mesh(
       new THREE.SphereGeometry(2.6, 32, 32),
-      new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.12, side: THREE.BackSide })
+      new THREE.MeshBasicMaterial({ color: 0xA8525F, transparent: true, opacity: 0.14, side: THREE.BackSide })
     ));
 
     for (let r = 4; r <= 8; r += 1.5) {
       const ring = new THREE.Mesh(
         new THREE.TorusGeometry(r, 0.02, 8, 100),
-        new THREE.MeshBasicMaterial({ color: 0x224466, transparent: true, opacity: 0.3 })
+        new THREE.MeshBasicMaterial({ color: 0x4F5765, transparent: true, opacity: 0.25 })
       );
       ring.rotation.x = Math.PI / 2;
       scene.add(ring);
@@ -257,14 +284,14 @@
 
     const planetObjects = [];
     const knownIds = new Set();
-    const colors = ['#00ffcc', '#ff6cf0', '#ffcc00', '#00ccff', '#ff6633', '#66ff66', '#cc99ff', '#ff3366'];
+    const colors = ['#F4ECE4', '#C78A93', '#8C95A3', '#A8525F', '#C7CCD4', '#D4A0A8', '#7E2A38', '#F8EFE6'];
 
     function createTextSprite(text, color) {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = 512;
       canvas.height = 128;
-      ctx.font = 'bold 48px -apple-system, Arial';
+      ctx.font = "500 48px 'Inter', -apple-system, Arial";
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.shadowColor = color;
@@ -372,6 +399,41 @@
       if (id) location.href = `/orbit.html?id=${id}`;
     });
 
+    // Zoom
+    const MIN_DIST = 5, MAX_DIST = 40;
+    let cameraDistance = 14;
+    function setZoom(d) {
+      cameraDistance = Math.min(MAX_DIST, Math.max(MIN_DIST, d));
+    }
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      setZoom(cameraDistance * (1 + e.deltaY * 0.004));
+    }, { passive: false });
+
+    // Pinch zoom
+    const activePointers = new Map();
+    let pinchStartDist = 0, pinchStartCam = 0;
+    canvas.addEventListener('pointerdown', e => {
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2) {
+        const [a, b] = [...activePointers.values()];
+        pinchStartDist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        pinchStartCam = cameraDistance;
+      }
+    });
+    canvas.addEventListener('pointermove', e => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 2) {
+        const [a, b] = [...activePointers.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        setZoom(pinchStartCam * (pinchStartDist / d));
+      }
+    });
+    function endPointer(e) { activePointers.delete(e.pointerId); }
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
+
     let sceneTime = Date.now() * 0.001;
     let lastFrame = performance.now();
     let timeScale = 1;
@@ -411,8 +473,8 @@
       } else {
         hoverHalo.visible = false;
       }
-      camera.position.x = Math.sin(t * 0.04) * 14;
-      camera.position.z = Math.cos(t * 0.04) * 14;
+      camera.position.x = Math.sin(t * 0.04) * cameraDistance;
+      camera.position.z = Math.cos(t * 0.04) * cameraDistance;
       camera.position.y = 3 + Math.sin(t * 0.06) * 1.5;
       camera.lookAt(0, 0, 0);
       renderer.render(scene, camera);
