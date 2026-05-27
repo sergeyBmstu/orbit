@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const users = [];
 
 function getLocalIP() {
@@ -20,7 +20,9 @@ function getLocalIP() {
 }
 
 const localIP = getLocalIP();
-const baseURL = `http://${localIP}:${PORT}`;
+const baseURL = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : `http://${localIP}:${PORT}`;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
