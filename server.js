@@ -11,11 +11,6 @@ const names = new Map();        // userId -> name
 const connections = new Map();  // userId -> Set<userId>
 const joinedAt = new Map();     // userId -> timestamp (for /api/users ordering)
 
-const SEED_ID = '0';
-names.set(SEED_ID, 'Sergey Kochetov');
-connections.set(SEED_ID, new Set());
-joinedAt.set(SEED_ID, Date.now());
-
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
