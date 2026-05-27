@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "node server.js",
+    "next:start": "next start"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
+    "express": "^4.18.2",
     "next": "^15.1.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",

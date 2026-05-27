@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import type { FakeUser } from "@/lib/fakedata";
+import { generateUsers, type FakeUser } from "@/lib/fakedata";
 import { createPlanetMesh, createSunMesh } from "@/lib/planet3d";
 
 const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), { ssr: false });
@@ -47,9 +47,8 @@ export default function Page() {
   const fgRef = useRef<unknown>(null);
 
   useEffect(() => {
-    fetch("/api/users")
-      .then((r) => r.json())
-      .then((data) => setUsers(data.users as FakeUser[]));
+    // Static export — no Next API routes; compute the fake user pool directly.
+    setUsers(generateUsers(40));
     setFollowing(loadFollowing());
 
     const update = () =>
