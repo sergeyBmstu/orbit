@@ -6,15 +6,17 @@
   <title>Join</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    #build-version {
+    #build-info {
       position: fixed;
       bottom: 16px;
       right: 20px;
+      text-align: right;
       color: rgba(255,255,255,0.2);
       font-size: 11px;
       font-family: monospace;
       z-index: 100;
       user-select: none;
+      line-height: 1.6;
     }
     body {
       background: #0a0a2e;
@@ -62,7 +64,7 @@
   </style>
 </head>
 <body>
-  <div id="build-version">v00</div>
+  <div id="build-info"><span id="build-version">v00</span><br><span id="build-started"></span></div>
   <div class="container" id="form">
     <h1>Join the Planet</h1>
     <input type="text" id="name" placeholder="Your name" autocomplete="off" autofocus />
@@ -79,6 +81,9 @@
   <script>
     fetch('/api/version').then(r => r.json()).then(d => {
       document.getElementById('build-version').textContent = `v${d.build}`;
+      const t = new Date(d.startedAt);
+      document.getElementById('build-started').textContent =
+        `started ${t.toLocaleDateString()} ${t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }).catch(() => {});
 
     const params = new URLSearchParams(location.search);

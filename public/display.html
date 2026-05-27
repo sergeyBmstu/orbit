@@ -6,15 +6,17 @@
   <style>
     * { margin: 0; padding: 0; }
     body { background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
-    #build-version {
+    #build-info {
       position: fixed;
       bottom: 16px;
       right: 20px;
+      text-align: right;
       color: rgba(255,255,255,0.2);
       font-size: 11px;
       font-family: monospace;
       z-index: 100;
       user-select: none;
+      line-height: 1.6;
     }
     #qr-container {
       position: fixed;
@@ -58,7 +60,7 @@
   </style>
 </head>
 <body>
-  <div id="build-version">v00</div>
+  <div id="build-info"><span id="build-version">v00</span><br><span id="build-started"></span></div>
   <div id="title">Scan to join</div>
   <div id="user-count">0 explorers</div>
   <div id="qr-container">
@@ -172,6 +174,9 @@
     // Build version
     fetch('/api/version').then(r => r.json()).then(d => {
       document.getElementById('build-version').textContent = `v${d.build}`;
+      const t = new Date(d.startedAt);
+      document.getElementById('build-started').textContent =
+        `started ${t.toLocaleDateString()} ${t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
     }).catch(() => {});
 
     // Polling

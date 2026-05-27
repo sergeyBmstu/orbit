@@ -3,7 +3,21 @@ const QRCode = require('qrcode');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
-const { build: BUILD_NUMBER } = require('./version.json');
+const fs = require('fs');
+
+let BUILD_NUMBER = '00';
+try {
+  // Baked by nixpacks during Railway build phase
+  BUILD_NUMBER = fs.readFileSync(path.join(__dirname, '.build-number'), 'utf8').trim().padStart(2, '0');
+} catch (e) {
+  try {
+    // Local dev fallback
+    const { execSync } = require('child_process');
+    BUILD_NUMBER = String(parseInt(execSync('git rev-list --count HEAD').toString().trim(), 10)).padStart(2, '0');
+  } catch (e2) {}
+}
+
+const STARTED_AT = new Date();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -81,7 +95,7 @@ app.post('/api/scan', (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-  res.json({ build: BUILD_NUMBER });
+  res.json({ build: BUILD_NUMBER, startedAt: STARTED_AT.toISOString() });
 });
 
 app.get('/api/qr', async (req, res) => {
