@@ -75,7 +75,8 @@ app.post('/api/scan', (req, res) => {
     return res.status(404).json({ error: 'Unknown user' });
   }
   connections.get(target).add(scanner);
-  console.log(`* scan: ${names.get(scanner)} -> ${names.get(target)}`);
+  connections.get(scanner).add(target);
+  console.log(`* scan: ${names.get(scanner)} <-> ${names.get(target)}`);
   res.json({ ok: true, target: { id: target, name: names.get(target) } });
 });
 
