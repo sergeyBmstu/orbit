@@ -4,61 +4,89 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Join</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --orbit-burgundy-200: #C78A93;
+      --orbit-burgundy-300: #A8525F;
+      --orbit-burgundy-400: #7E2A38;
+      --orbit-burgundy-500: #5E1F2A;
+      --orbit-burgundy-600: #3F141C;
+      --orbit-slate-300: #8C95A3;
+      --orbit-cream: #F4ECE4;
+      --orbit-space-0: #0A0E16;
+      --orbit-space-1: #131826;
+      --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+      --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     #build-version {
       position: fixed;
       bottom: 16px;
       right: 20px;
-      color: rgba(255,255,255,0.2);
+      color: rgba(244,236,228,0.2);
       font-size: 11px;
       font-family: monospace;
       z-index: 100;
       user-select: none;
     }
     body {
-      background: #0a0a2e;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--orbit-space-0);
+      color: var(--orbit-cream);
+      font-family: var(--font-ui);
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100dvh;
       padding: 24px;
+      -webkit-font-smoothing: antialiased;
     }
     .container { text-align: center; max-width: 380px; width: 100%; }
-    h1 { font-size: 32px; margin-bottom: 40px; }
+    h1 {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 400;
+      margin-bottom: 40px;
+      color: #fff;
+    }
     input {
       width: 100%;
       padding: 18px;
       font-size: 22px;
-      border: 2px solid #0af;
+      font-family: var(--font-ui);
+      border: 2px solid var(--orbit-burgundy-400);
       border-radius: 14px;
-      background: rgba(255,255,255,0.08);
-      color: #fff;
+      background: rgba(244,236,228,0.04);
+      color: var(--orbit-cream);
       outline: none;
       margin-bottom: 20px;
       text-align: center;
+      transition: border-color 0.2s, background 0.2s;
     }
-    input:focus { border-color: #0fc; background: rgba(255,255,255,0.12); }
-    input::placeholder { color: rgba(255,255,255,0.3); }
+    input:focus { border-color: var(--orbit-burgundy-300); background: rgba(244,236,228,0.08); }
+    input::placeholder { color: rgba(244,236,228,0.35); }
     button {
       width: 100%;
       padding: 18px;
       font-size: 22px;
-      background: linear-gradient(135deg, #0af, #0fc);
-      color: #000;
+      font-family: var(--font-ui);
+      background: var(--orbit-burgundy-400);
+      color: var(--orbit-cream);
       border: none;
       border-radius: 14px;
       cursor: pointer;
       font-weight: 700;
-      transition: transform 0.1s;
+      transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+      box-shadow: 0 0 24px rgba(126,42,56,0.3), 0 8px 20px rgba(0,0,0,0.3);
     }
+    button:hover { background: var(--orbit-burgundy-300); transform: translateY(-1px); }
     button:active { transform: scale(0.97); }
     button:disabled { opacity: 0.5; }
     .success h1 { font-size: 48px; margin-bottom: 16px; }
-    .success p { font-size: 22px; color: #0fc; }
-    .success .hint { font-size: 15px; color: #556; margin-top: 24px; }
+    .success p { font-size: 22px; color: var(--orbit-cream); }
+    .success .hint { font-size: 15px; color: var(--orbit-slate-300); margin-top: 24px; }
   </style>
 </head>
 <body>
@@ -72,7 +100,7 @@
   <div class="container success" id="done" style="display:none">
     <h1>&#127881;</h1>
     <p>You're in orbit, <strong id="who"></strong>!</p>
-    <a id="my-orbit" href="/orbit.html" style="display:inline-block; margin-top:24px; padding:14px 28px; background:linear-gradient(135deg,#0af,#0fc); color:#000; border-radius:12px; text-decoration:none; font-weight:700; font-size:18px;">My orbit</a>
+    <a id="my-orbit" href="/orbit.html" style="display:inline-block; margin-top:24px; padding:14px 28px; background:#7E2A38; color:#F4ECE4; border-radius:12px; text-decoration:none; font-weight:700; font-size:18px; font-family:'Inter',sans-serif; box-shadow:0 0 24px rgba(126,42,56,0.3); transition:background 0.2s;">My orbit</a>
     <div class="hint">Look at the big screen</div>
   </div>
 
