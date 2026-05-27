@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Your Orbit</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,6 +24,7 @@
     }
     * { margin: 0; padding: 0; }
     body { background: var(--orbit-space-0); overflow: hidden; font-family: var(--font-ui); -webkit-font-smoothing: antialiased; }
+    canvas { touch-action: none; }
     #build-version {
       position: fixed;
       bottom: 16px;
@@ -102,13 +104,44 @@
     }
     #back:hover { background: rgba(244,236,228,0.1); border-color: rgba(244,236,228,0.3); }
     #title.with-back { left: 160px; }
+    #view-galaxy {
+      position: fixed;
+      top: 72px;
+      right: 40px;
+      z-index: 11;
+      padding: 10px 16px;
+      background: rgba(126,42,56,0.16);
+      border: 1px solid var(--orbit-burgundy-300);
+      border-radius: 10px;
+      color: var(--orbit-burgundy-200);
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-ui);
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    #view-galaxy:hover { background: rgba(126,42,56,0.3); }
     canvas { cursor: default; }
     canvas.hover { cursor: pointer; }
+
+    @media (max-width: 640px) {
+      #title { top: max(env(safe-area-inset-top), 14px); left: 16px; font-size: 18px; }
+      #title small { font-size: 11px; margin-top: 2px; }
+      #title.with-back { left: 110px; font-size: 16px; }
+      #user-count { top: max(env(safe-area-inset-top), 14px); right: 16px; font-size: 16px; }
+      #view-galaxy { top: calc(max(env(safe-area-inset-top), 14px) + 30px); right: 16px; padding: 7px 12px; font-size: 11px; }
+      #back { top: max(env(safe-area-inset-top), 14px); left: 14px; padding: 8px 12px; font-size: 12px; }
+      #qr-container { bottom: max(env(safe-area-inset-bottom), 14px); }
+      #qr-img { width: 120px; height: 120px; padding: 6px; border-radius: 10px; }
+      #qr-url { font-size: 10px; max-width: 240px; margin-top: 6px; }
+      #build-version { bottom: 8px; right: 10px; font-size: 10px; }
+    }
   </style>
 </head>
 <body>
   <div id="build-version">v00</div>
   <a id="back" href="/orbit.html">&larr; My orbit</a>
+  <a id="view-galaxy" href="/galaxy.html">View galaxy &rarr;</a>
   <div id="title">Loading…</div>
   <div id="user-count">0 planets</div>
   <div id="qr-container">

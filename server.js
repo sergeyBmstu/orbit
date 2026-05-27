@@ -7,9 +7,17 @@ const { execSync } = require('child_process');
 
 let BUILD_NUMBER = '00';
 try {
-  const count = parseInt(execSync('git rev-list --count HEAD 2>/dev/null').toString().trim(), 10);
+  // Railway: number is baked into .build-number during nixpacks build phase
+  const fs = require('fs');
+  const count = parseInt(fs.readFileSync(path.join(__dirname, '.build-number'), 'utf8').trim(), 10);
   BUILD_NUMBER = String(count).padStart(2, '0');
-} catch (e) {}
+} catch (e) {
+  try {
+    // Local dev fallback: read from git directly
+    const count = parseInt(execSync('git rev-list --count HEAD 2>/dev/null').toString().trim(), 10);
+    BUILD_NUMBER = String(count).padStart(2, '0');
+  } catch (e2) {}
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -91,6 +99,22 @@ app.get('/api/version', (req, res) => {
   res.json({ build: BUILD_NUMBER });
 });
 
+app.get('/api/galaxy', (req, res) => {
+  const users = [...names.entries()].map(([id, name]) => ({ id, name }));
+  const seen = new Set();
+  const edges = [];
+  for (const [id, peers] of connections.entries()) {
+    for (const peer of peers) {
+      if (!names.has(peer)) continue;
+      const key = id < peer ? `${id}|${peer}` : `${peer}|${id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push([id, peer]);
+    }
+  }
+  res.json({ users, edges });
+});
+
 app.get('/api/qr', async (req, res) => {
   const url = `${baseURL}/join.html`;
   const dataUrl = await QRCode.toDataURL(url, { width: 300, margin: 2 });
@@ -109,7 +133,6 @@ app.get('/api/qr/:id', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nServer:  ${baseURL}`);
-  console.log(`Display: ${baseURL}/display.html`);
   console.log(`Join:    ${baseURL}/join.html`);
   console.log(`Orbit:   ${baseURL}/orbit.html\n`);
 });
